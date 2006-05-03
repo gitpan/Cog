@@ -1,0 +1,45 @@
+NAME
+    Cog - The great new Cog!
+
+SYNOPSIS
+        use Cog;
+
+DESCRIPTION
+    Cog is your information management being.
+
+AUTHOR
+    Ingy döt Net, "<ingy at cpan.org>"
+
+BUGS
+    Please report any bugs or feature requests to "bug-cog at rt.cpan.org",
+    or through the web interface at
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cog>. I will be
+    notified, and then you'll automatically be notified of progress on your
+    bug as I make changes.
+
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+        perldoc Cog
+
+    You can also look for information at:
+
+    * AnnoCPAN: Annotated CPAN documentation
+        <http://annocpan.org/dist/Cog>
+
+    * CPAN Ratings
+        <http://cpanratings.perl.org/d/Cog>
+
+    * RT: CPAN's request tracker
+        <http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cog>
+
+    * Search CPAN
+        <http://search.cpan.org/dist/Cog>
+
+ACKNOWLEDGEMENTS
+COPYRIGHT & LICENSE
+    Copyright 2006 Ingy döt Net, all rights reserved.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
