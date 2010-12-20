@@ -1,6 +1,5 @@
-# Revision history for Cog
-
-version: 0.01
-date:    Wed May  3 12:23:16 PDT 2006
+---
+version: 0.02
+date:    Thu Dec  2 17:11:39 EST 2010
 changes:
-- Initial release
+- First Release

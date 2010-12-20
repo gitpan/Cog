@@ -1,72 +1,119 @@
 package Cog;
+use 5.008003;
+use Mouse;
 
-use 5.006001;
-use strict;
-use warnings;
+our $VERSION = '0.02';
 
-our $VERSION = '0.01';
+extends 'Cog::Plugin';
+
+use constant index_file => 'layout.html';
+
+sub site_navigation {
+    [
+        ['Home' => '/home/'],
+        ['Files' => '/files/'],
+        ['Tags' => '/tags/'],
+    ]
+}
+
+sub url_map {
+    [
+        ['/' => 'redirect', ('/home/')],
+        ['/home/' => 'about_cog'],
+        ['/files/' => 'files_list'],
+        ['/tags/' => 'tags_list'],
+    ];
+}
+
+sub js_files {
+    [qw(
+        jquery-1.4.4.min.js
+        jemplate.js
+        separator.js
+        cog.js
+        config.js
+        url-map.js
+        start.js
+    )]
+}
+
+sub css_files {
+    [qw(
+        layout.css
+        page-list.css
+        page-display.css
+    )];
+}
+
+sub image_files {
+    [qw(
+        tile.gif
+        cog.png
+    )];
+}
+
+sub template_files {
+    [qw(
+        config.js.tt
+        js-mf.mk.tt
+        css-mf.mk.tt
+
+        layout.html.tt
+        site-navigation.html.tt
+        page-list.html.tt
+        page-display.html.tt
+        tag-list.html.tt
+        404.html.tt
+    )];
+}
+
+1;
+
+=encoding utf8
 
 =head1 NAME
 
-Cog - The great new Cog!
+Cog - The Cog Information Application Framework
 
 =head1 SYNOPSIS
 
-    use Cog;
+    > cd content/dir
+    > cog init
+    > cog make
+    > cog start
+
+=head1 STATUS
+
+This software is pre-alpha. Don't use it for anything serious yet.
 
 =head1 DESCRIPTION
 
-Cog is your information management being.
+Cog lets you turn any directory on your computer into an interactive
+application, like a website or a wiki.
+
+This module installs a command line utility called C<cog>. This command
+can be used to create and update your application.
+
+=head1 DOCUMENTATION
+
+See L<Cog::Manual> for more information.
+
+=head1 KUDOS
+
+Many thanks to the good people of Strategic Data in Melbourne Victoria
+Australia, for supporting me and this project. \o/
 
 =head1 AUTHOR
 
-Ingy döt Net, C<< <ingy at cpan.org> >>
+Ingy döt Net <ingy@cpan.org>
 
-=head1 BUGS
+=head1 COPYRIGHT
 
-Please report any bugs or feature requests to
-C<bug-cog at rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cog>.
-I will be notified, and then you'll automatically be notified of
-progress on your bug as I make changes.
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Cog
-
-You can also look for information at:
-
-=over
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Cog>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Cog>
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cog>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Cog>
-
-=back
-
-=head1 ACKNOWLEDGEMENTS
-
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2006 Ingy döt Net, all rights reserved.
+Copyright (c) 2010. Ingy döt Net.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
 
-=cut
+See http://www.perl.com/perl/misc/Artistic.html
 
-1; # End of Cog
+=cut

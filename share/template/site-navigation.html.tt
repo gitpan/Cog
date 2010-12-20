@@ -1,0 +1,15 @@
+<div class="site-navigation">
+[% INCLUDE nav_list nav=site_navigation %]
+</div>
+
+[% BLOCK nav_list %]
+<ul>
+[% FOR elem = nav %]
+  <li><a href="[% base_url %][% elem.1 %]">[% elem.0 %]</a>
+[% IF elem.2 %]
+[% INCLUDE nav_list nav=elem.2 %]
+[% END %]
+  </li>
+[% END %]
+ </ul>
+[% END %]

@@ -1,8 +1,0 @@
-#!/usr/bin/perl
-
-use strict;
-use lib 'lib';
-
-use Cog::Shell;
-
-Cog::Shell->new->start;

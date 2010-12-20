@@ -1,0 +1,5 @@
+#!/usr/bin/perl
+
+use Cog::Command;
+
+exit Cog::Command->new($0, @ARGV)->run();
