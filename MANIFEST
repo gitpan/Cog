@@ -16,6 +16,7 @@ inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Cog.pm
 lib/Cog/App.pm
+lib/Cog/Cog.pm
 lib/Cog/Command.pm
 lib/Cog/Config.pm
 lib/Cog/Maker.pm
