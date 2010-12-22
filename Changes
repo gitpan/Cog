@@ -1,4 +1,9 @@
 ---
+version: 0.05
+date:    Thu Dec 23 00:23:17 EST 2010
+changes:
+- Add a VERSION to Cog::Cog
+---
 version: 0.04
 date:    Wed Dec 22 15:17:53 EST 2010
 changes:
