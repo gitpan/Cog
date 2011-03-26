@@ -1,52 +1,131 @@
+#TODO:
+# - Support uri_base
+# - Support uri_port
+# - Support uri_path
+# - Support daemon, logfile and pid
+# - plugins can update config to map urls to code
+# - Make all config options 'foo' respect $COG_FOO
 package Cog::Config;
 use Mouse;
-use YAML::XS;
+use File::ShareDir;
+
 use IO::All;
 
 # use XXX;
 
-my $root_dir = ($ENV{COG_ROOT_DIR} || '.cog');
-has root_dir => (is => 'ro', default => $root_dir);
+### These options are set by user in config file:
 
+# Common webapp options
 has site_name => (is => 'ro');
 has home_page_id => (is => 'ro');
+has html_title => (is => 'ro');
+
+# Server options
 has server_port => (is => 'ro', default => '');
+has proxymap => (is => 'ro');
+has cache_urls => (is => 'ro');
 
-has content_root => (is => 'ro', default => '..');
+### These fields are part of the Cog framework:
 
-has is_init => (is => 'ro', default => 0);
-has is_config => (is => 'ro', default => 0);
-has is_ready => (is => 'ro', default => 0);
+# Bootstrapping config values (root directories)
+has app_class => (
+    is => 'ro',
+    required => 1,
+);
+has app_root => (
+    is => 'ro',
+    lazy => 1,
+    default => ($ENV{COG_APP_ROOT} || 'cog'),
+);
+has store_root => (
+    is => 'ro',
+    lazy => 1,
+    default => '.',
+);
+has content_root => (
+    is => 'ro',
+    lazy => 1,
+    default => '.',
+);
 
-has plugins => (is => 'ro', default => sub{[]});
+# Cog singleton object references
+has webapp => (
+    is => 'ro',
+    lazy => 1,
+    builder => sub { $_[0]->object_builder('webapp', 'Cog::WebApp') },
+);
+has runner => (
+    is => 'ro',
+    lazy => 1,
+    builder => sub {
+        $_[0]->classes->{runner} = $_[0]->webapp->runner_class;
+        $_[0]->object_builder('runner', 'Cog::WebApp::Runner');
+    },
+);
+has maker => (
+    is => 'ro',
+    lazy => 1,
+    builder => sub { $_[0]->object_builder('maker', 'Cog::Maker') },
+);
+has store => (
+    is => 'ro',
+    lazy => 1,
+    builder => sub { $_[0]->object_builder('store', 'Cog::Store') },
+);
+has content => (
+    is => 'ro',
+    lazy => 1,
+    builder => sub { $_[0]->object_builder('content', 'Cog::Content') },
+);
+has view => (
+    is => 'ro',
+    lazy => 1,
+    builder => sub { $_[0]->object_builder('view', 'Cog::View') },
+);
 
-has plack_debug => (is => 'ro', default => 0);
+sub object_builder {
+    my ($self, $type, $base) = @_;
+    my $class = $self->classes->{$type};
+    unless (UNIVERSAL::isa($class, $base)) {
+        eval "require $class; 1" or die $@;
+    }
+    return $class->new();
+}
 
+# App Command Values
+has command_script => (is => 'rw');
+has command_args => (is => 'rw', default => sub{[]});
+
+# App & WebApp definitions
 has url_map => (is => 'ro', default => sub{[]});
-
+has post_map => (is => 'ro', default => sub{[]});
 has js_files => (is => 'ro', default => sub{[]});
 has css_files => (is => 'ro', default => sub{[]});
 has image_files => (is => 'ro', default => sub{[]});
 has template_files => (is => 'ro', default => sub{[]});
 has site_navigation => (is => 'ro', default => sub{[]});
-
-has class_share_map => (is => 'ro', default => sub{{}});
-
 has files_map => (is => 'ro', builder => '_build_files_map', lazy => 1);
+has classes => (is => 'rw');
+has all_js_file => (is => 'rw');
+has all_css_file => (is => 'rw');
 
-around BUILDARGS => sub {
-    my ($orig, $class) = splice @_, 0, 2;
+# App readiness
+has is_init => (is => 'ro', default => 0);
+has is_config => (is => 'ro', default => 0);
+has is_ready => (is => 'ro', default => 0);
 
-    my $config_file = "$root_dir/config.yaml";
-    my $hash = -e $config_file
-        ? YAML::XS::LoadFile($config_file)
-        : {};
-    $class->$orig($hash);
-};
+# Private accessors
+has _plugins => (is => 'ro', default => sub{[]});
+has _class_share_map => (is => 'ro', default => sub{{}});
 
+
+# Build the config object scanning through all the classes and merging
+# their capabilites together appropriately.
+#
+# This is the hard part...
 sub BUILD {
     my $self = shift;
-    my $root = $self->root_dir;
+    my $root = $self->app_root;
     $self->{is_init} = 1
         if -d "$root/static";
     $self->{is_config} = 1
@@ -59,6 +138,7 @@ sub BUILD {
     $self->build_class_share_map();
 
     $self->build_list('url_map', 'lol');
+    $self->build_list('post_map', 'lol');
     $self->build_list('site_navigation', 'lol');
 
     $self->build_list('js_files');
@@ -66,42 +146,49 @@ sub BUILD {
     $self->build_list('image_files');
     $self->build_list('template_files');
 
+    $self->find_classes();
+
     return $self;
 }
 
 sub build_plugin_list {
     my $self = shift;
-    my $list = $self->plugins;
-    my @plugins = @$list;
+    my $list = [];
     my $expanded = {};
-    for my $plugin (@plugins) {
-        $self->expand_list($list, $plugin, $expanded);
-    }
-    if (not grep {$_ eq 'Cog'} @$list) {
-        require Cog;
-        unshift @$list, 'Cog';
-    }
-        
-    $self->{plugins} = $list;
+    $self->expand_list($list, $self->app_class, $expanded);
+
+    $self->{_plugins} = $list;
 }
 
 sub expand_list {
     my ($self, $list, $plugin, $expanded) = @_;
     return if $expanded->{$plugin};
     $expanded->{$plugin} = 1;
-    eval "use $plugin; 1" or die;
-    my $adds = $plugin->plugins;
-    push @$adds, $plugin
-        unless grep {$_ eq $plugin} @$adds;
-    for (my $i = 0; $i < @$list; $i++) {
-        if ($list->[$i] eq $plugin) {
-            splice(@$list, $i, 1, @$adds);
-            last;
-        }
+    eval "use $plugin";
+    die "use $plugin; error: $@"
+        if $@ and $@ !~ /Can't locate/;
+    unshift @$list, $plugin;
+    my $adds = [];
+    my $parent;
+    {
+        no strict 'refs';
+        $parent = ${"${plugin}::ISA"}[0];
     }
-    my @plugins = @$list;
-    for $plugin (@plugins) {
-        $self->expand_list($list, $plugin, $expanded);
+    if ($plugin->isa('Cog::App')) {
+        if ($plugin->webapp_class) {
+            push @$adds, $plugin->webapp_class;
+        }
+        push @$adds, $parent
+            unless $parent =~ /^(Cog::Base|Cog::Plugin)$/;
+    }
+    elsif ($plugin->isa('Cog::WebApp')) {
+        push @$adds, $parent
+            unless $parent =~ /^(Cog::Base|Cog::Plugin)$/;
+    }
+    push @$adds, @{$plugin->plugins};
+
+    for my $add (@$adds) {
+        $self->expand_list($list, $add, $expanded);
     }
 }
 
@@ -111,10 +198,13 @@ sub build_list {
     my $list_list = shift || 0;
     my $finals = $self->$name;
     my $list = [];
-    my $plugins = $self->plugins;
+    my $plugins = $self->_plugins;
     my $method = $list_list ? 'add_to_list_list' : 'add_to_list';
     for my $plugin (@$plugins) {
-        $self->$method($list, $plugin->$name);
+        my $function = "${plugin}::$name";
+        next unless defined(&$function);
+        no strict 'refs';
+        $self->$method($list, &$function());
     }
     $self->$method($list, $finals);
     $self->{$name} = $list;
@@ -172,38 +262,59 @@ sub add_to_list_list {
 
 sub build_class_share_map {
     my $self = shift;
-    my $plugins = $self->plugins;
-    my $class_share_map = $self->class_share_map;
+    my $plugins = $self->_plugins;
+    my $class_share_map = $self->_class_share_map;
     for my $plugin (@$plugins) {
-        (my $path = "$plugin.pm") =~ s!::!/!g;
-        $path = $INC{$path} or die;
-        # NOTE: $path is for dev testing.
-        $path =~ s!^(\Q$ENV{HOME}\E.*)/lib/.*!$1/share!;
-        my $dir = -e $path
-            ? $path
-            : do {
-                (my $dist = $plugin) =~ s/::/-/g;
-                eval { File::ShareDir::dist_dir($dist) } || do {
-                    $_ = $@ or die;
-                    /.* at (.*\/\.\.)/s or die;
-                    "$1/share/";
-                };
-            };
-        $class_share_map->{$plugin} = $dir;
+        my $dir = $self->find_share_dir($plugin)
+            or die "Can't find share dir for $plugin";
+        $class_share_map->{$plugin} = $dir
+            if $dir;
     }
 }
 
+sub find_share_dir {
+    my $self = shift;
+    my $plugin = shift;
+
+    my $dist = $plugin->DISTNAME;
+    my $modpath = "$dist.pm";
+    $modpath =~ s!-!/!g;
+
+    while (1) {
+        my $dir = $INC{$modpath} or last;
+        $dir =~ s!(blib/)?lib/\Q$modpath\E$!! or last;
+        $dir .= "share";
+        return $dir if -e $dir;
+        last;
+    }
+
+    my $dir = eval { File::ShareDir::dist_dir($dist) };
+    return $dir if $dir;
+
+    return;
+}
+
+sub find_classes {
+    my $self = shift;
+    my $classes = {};
+    for my $plugin (@{$self->_plugins}) {
+        next unless $plugin->can('cog_classes');
+        $classes = +{ %$classes, %{$plugin->cog_classes} };
+    }
+    $self->classes($classes);
+}
+
 sub _build_files_map {
-    require File::ShareDir;
     my $self = shift;
 
     my $hash = {};
 
-    my $plugins = $self->plugins;
+    my $plugins = $self->_plugins;
 
     for my $plugin (@$plugins) {
-        my $dir = $self->class_share_map->{$plugin};
+        my $dir = $self->_class_share_map->{$plugin} or next;
         for (io->dir($dir)->All_Files) {
+            next if "$_" =~ /\.sw[p]$/;
             my $full = $_->pathname;
             my $short = $full;
             $short =~ s!^\Q$dir\E/?!! or die;
@@ -214,11 +325,12 @@ sub _build_files_map {
     return $hash;
 }
 
+# Put the App in the context of its defined root directory.
 sub chdir_root {
     my $self = shift;
-    chdir $self->root_dir;
-    $self->{root_dir} = '.';
+    my $app_root = $self->app_root;
+    chdir $app_root
+      or die "Can't chdir into $app_root";
 }
-
 
 1;
