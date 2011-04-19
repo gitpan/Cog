@@ -1,5 +1,0 @@
-# The type of this app. app_class is required.
-app_class: Cog::App::Test
-
-# Server Options
-server_port: 1234

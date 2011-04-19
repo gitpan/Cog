@@ -24,11 +24,12 @@ sub flush {
 sub content_pointer {
     my $self = shift;
     my $node = shift;
-    my $content_root = $self->config->content_root;
+#     my $content_root = $self->config->content_root;
+    my $content_root = '.';
     my $id = $node->Short;
     my $type = $node->Type or die;
     my $title = $node->Title or die;
-    $title =~ s/[^-A-Za-z0-9]+/_/g;
+    $title =~ s/[^-.,A-Za-z0-9]+/_/g;
     $title =~ s/^_?(.*?)_?$/$1/g;
     $title ||= '_';
     return "$content_root/$type/$title--$id.cog";

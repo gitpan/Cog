@@ -9,8 +9,6 @@ use Cog::Node::Schema;
 use IO::All;
 use Convert::Base32::Crockford ();
 
-# use XXX;
-
 has root => (is => 'ro', default => 'store');
 has importing => (is => 'rw', default => '0');
 has schema_map => (is => 'ro', default => sub {+{}});
@@ -223,7 +221,7 @@ sub index {
     my $self = shift;
     my $name = shift or die;
     my $key = @_ ? shift : '';
-    my $index = "$self->root/index/$name";
+    my $index = $self->root . "/index/$name";
     if (not @_) {
         if ($key eq '') {
             return [] unless -d $index;
@@ -242,7 +240,7 @@ sub unindex {
     my $name = shift or die;
     my $key = shift or die;
     my $value = shift or die;
-    my $file = "$self->root/index/$name/$key/$value";
+    my $file = $self->root . "/index/$name/$key/$value";
     if (-f $file) {
         io->file($file)->unlink;
         return 1;
@@ -261,6 +259,8 @@ sub update_node_from_hash {
         next if $name =~ /^(Id|Type)$/;
         my $list = $field->list;
         if ($list) {
+            $data->{$name} ||= [$data->{Title}]
+                if $name eq 'Name' and $data->{Title};
             my $new_value = join(',', @{($data->{$name} || [])});
             my $old_value = join(',', @{($node->{$name} || [])});
             if ($new_value ne $old_value) {
